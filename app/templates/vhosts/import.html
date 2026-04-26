@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Import Config - Apache VHost Manager{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mt-4 mb-4">Import Existing Config</h1>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('vhosts.import_vhost') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-3">
+                    <label for="filename" class="form-label">Config Filename</label>
+                    <input type="text" class="form-control" id="filename" name="filename"
+                           placeholder="example.com.conf" value="{{ filename or '' }}">
+                    <div class="form-text">The filename to use in sites-available (e.g., example.com.conf).</div>
+                </div>
+                <div class="mb-3">
+                    <label for="config_content" class="form-label">Apache Config Content</label>
+                    <textarea class="form-control font-monospace" id="config_content" name="config_content"
+                              rows="20" placeholder="<VirtualHost *:80>...">{{ config_content or '' }}</textarea>
+                    <div class="form-text">Paste the full Apache virtual host configuration here.</div>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('vhosts.list_vhosts') }}" class="btn btn-outline-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-upload me-1"></i>Import
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

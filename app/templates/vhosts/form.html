@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Apache VHost Manager{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mt-4 mb-4">{{ title }}</h1>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" action="" id="vhostForm">
+                {{ form.hidden_tag() }}
+
+                <!-- Tabs -->
+                <ul class="nav nav-tabs mb-3" id="vhostTypeTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if form.vhost_type.data == 'static' or not form.vhost_type.data %}active{% endif %}"
+                                id="static-tab" data-bs-toggle="tab" data-bs-target="#static-pane" type="button" role="tab">
+                            <i class="bi bi-file-earmark-text me-1"></i>Static Website
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if form.vhost_type.data == 'proxy' %}active{% endif %}"
+                                id="proxy-tab" data-bs-toggle="tab" data-bs-target="#proxy-pane" type="button" role="tab">
+                            <i class="bi bi-arrow-left-right me-1"></i>Reverse Proxy
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if form.vhost_type.data == 'redirect' %}active{% endif %}"
+                                id="redirect-tab" data-bs-toggle="tab" data-bs-target="#redirect-pane" type="button" role="tab">
+                            <i class="bi bi-arrow-90deg-right me-1"></i>Redirect Only
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- Common Fields -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        {{ form.server_name.label(class="form-label") }}
+                        {{ form.server_name(class="form-control" + (" is-invalid" if form.server_name.errors else ""), placeholder="example.com") }}
+                        {% if form.server_name.errors %}<div class="invalid-feedback">{{ form.server_name.errors[0] }}</div>{% endif %}
+                        <div class="form-text">Primary domain name for this virtual host.</div>
+                    </div>
+                    <div class="col-md-6">
+                        {{ form.listen_port.label(class="form-label") }}
+                        {{ form.listen_port(class="form-control" + (" is-invalid" if form.listen_port.errors else "")) }}
+                        {% if form.listen_port.errors %}<div class="invalid-feedback">{{ form.listen_port.errors[0] }}</div>{% endif %}
+                    </div>
+                </div>
+
+                <!-- Server Aliases (repeatable) -->
+                <div class="mb-3">
+                    <label class="form-label">Server Aliases</label>
+                    <div id="alias-container">
+                        {% for alias_field in form.server_alias %}
+                        <div class="input-group mb-2 alias-row">
+                            {{ alias_field(class="form-control", placeholder="www.example.com") }}
+                            <button type="button" class="btn btn-outline-danger remove-alias"><i class="bi bi-dash-lg"></i></button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="add-alias">
+                        <i class="bi bi-plus-lg me-1"></i>Add Alias
+                    </button>
+                </div>
+
+                <!-- SSL Options -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <div class="form-check form-switch">
+                            {{ form.ssl_enabled(class="form-check-input", id="sslToggle") }}
+                            {{ form.ssl_enabled.label(class="form-check-label", for="sslToggle") }}
+                        </div>
+                    </div>
+                    <div class="card-body" id="sslFields" style="display: {% if form.ssl_enabled.data %}block{% else %}none{% endif %};">
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.ssl_cert_file.label(class="form-label") }}
+                                {{ form.ssl_cert_file(class="form-control", placeholder="/etc/ssl/certs/example.com.crt") }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.ssl_key_file.label(class="form-label") }}
+                                {{ form.ssl_key_file(class="form-control", placeholder="/etc/ssl/private/example.com.key") }}
+                            </div>
+                        </div>
+                        <div class="form-check mt-2">
+                            {{ form.force_https(class="form-check-input") }}
+                            {{ form.force_https.label(class="form-check-label") }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="vhostTypeTabContent">
+                    <!-- Static Pane -->
+                    <div class="tab-pane fade {% if form.vhost_type.data == 'static' or not form.vhost_type.data %}show active{% endif %}"
+                         id="static-pane" role="tabpanel">
+                        {{ form.vhost_type(value='static', id='type-static') }}
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                {{ form.document_root.label(class="form-label") }}
+                                {{ form.document_root(class="form-control", placeholder="/var/www/example.com") }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.directory_options.label(class="form-label") }}
+                                {{ form.directory_options(class="form-select") }}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                {{ form.allow_override.label(class="form-label") }}
+                                {{ form.allow_override(class="form-select") }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.require_directive.label(class="form-label") }}
+                                {{ form.require_directive(class="form-control") }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Proxy Pane -->
+                    <div class="tab-pane fade {% if form.vhost_type.data == 'proxy' %}show active{% endif %}"
+                         id="proxy-pane" role="tabpanel">
+                        {{ form.vhost_type(value='proxy', id='type-proxy') }}
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                {{ form.backend_protocol.label(class="form-label") }}
+                                {{ form.backend_protocol(class="form-select") }}
+                            </div>
+                            <div class="col-md-4">
+                                {{ form.backend_host.label(class="form-label") }}
+                                {{ form.backend_host(class="form-control", placeholder="127.0.0.1") }}
+                            </div>
+                            <div class="col-md-4">
+                                {{ form.backend_port.label(class="form-label") }}
+                                {{ form.backend_port(class="form-control") }}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                {{ form.backend_path.label(class="form-label") }}
+                                {{ form.backend_path(class="form-control", placeholder="/") }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.proxy_path.label(class="form-label") }}
+                                {{ form.proxy_path(class="form-control", placeholder="/") }}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <div class="form-check form-switch">
+                                    {{ form.preserve_host(class="form-check-input") }}
+                                    {{ form.preserve_host.label(class="form-check-label") }}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check form-switch">
+                                    {{ form.websocket_support(class="form-check-input") }}
+                                    {{ form.websocket_support.label(class="form-check-label") }}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                {{ form.proxy_timeout.label(class="form-label") }}
+                                {{ form.proxy_timeout(class="form-control") }}
+                            </div>
+                        </div>
+
+                        <!-- Request Headers -->
+                        <div class="mb-3">
+                            <label class="form-label">Request Headers</label>
+                            <div id="req-header-container">
+                                {% for h in form.request_headers %}
+                                <div class="row g-2 mb-2 header-row">
+                                    <div class="col-5">{{ h.form.key(class="form-control", placeholder="Header Name") }}</div>
+                                    <div class="col-5">{{ h.form.value(class="form-control", placeholder="Header Value") }}</div>
+                                    <div class="col-2"><button type="button" class="btn btn-outline-danger w-100 remove-header"><i class="bi bi-dash-lg"></i></button></div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="add-req-header">
+                                <i class="bi bi-plus-lg me-1"></i>Add Request Header
+                            </button>
+                        </div>
+
+                        <!-- Response Headers -->
+                        <div class="mb-3">
+                            <label class="form-label">Response Headers</label>
+                            <div id="resp-header-container">
+                                {% for h in form.response_headers %}
+                                <div class="row g-2 mb-2 header-row">
+                                    <div class="col-5">{{ h.form.key(class="form-control", placeholder="Header Name") }}</div>
+                                    <div class="col-5">{{ h.form.value(class="form-control", placeholder="Header Value") }}</div>
+                                    <div class="col-2"><button type="button" class="btn btn-outline-danger w-100 remove-header"><i class="bi bi-dash-lg"></i></button></div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="add-resp-header">
+                                <i class="bi bi-plus-lg me-1"></i>Add Response Header
+                            </button>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            {{ form.extra_security_headers(class="form-check-input") }}
+                            {{ form.extra_security_headers.label(class="form-check-label") }}
+                        </div>
+                    </div>
+
+                    <!-- Redirect Pane -->
+                    <div class="tab-pane fade {% if form.vhost_type.data == 'redirect' %}show active{% endif %}"
+                         id="redirect-pane" role="tabpanel">
+                        {{ form.vhost_type(value='redirect', id='type-redirect') }}
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                {{ form.redirect_url.label(class="form-label") }}
+                                {{ form.redirect_url(class="form-control", placeholder="https://newdomain.com/") }}
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check mt-4">
+                                    {{ form.redirect_permanent(class="form-check-input") }}
+                                    {{ form.redirect_permanent.label(class="form-check-label") }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Logs -->
+                <div class="card mb-3">
+                    <div class="card-header">Log Configuration</div>
+                    <div class="card-body row">
+                        <div class="col-md-6">
+                            {{ form.error_log.label(class="form-label") }}
+                            {{ form.error_log(class="form-control", placeholder="/var/log/apache2/example.com-error.log") }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.custom_log.label(class="form-label") }}
+                            {{ form.custom_log(class="form-control", placeholder="/var/log/apache2/example.com-access.log") }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Advanced -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <a class="text-decoration-none" data-bs-toggle="collapse" href="#advancedCollapse" role="button">
+                            <i class="bi bi-chevron-down me-1"></i>Advanced / Additional Directives
+                        </a>
+                    </div>
+                    <div class="collapse" id="advancedCollapse">
+                        <div class="card-body">
+                            {{ form.extra_directives.label(class="form-label") }}
+                            {{ form.extra_directives(class="form-control font-monospace", rows="5") }}
+                            <div class="form-text">Only safe directives allowed. Dangerous directives are blocked.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('vhosts.list_vhosts') }}" class="btn btn-outline-secondary">Cancel</a>
+                    {{ form.submit(class="btn btn-primary") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Tab switching updates hidden vhost_type field
+document.querySelectorAll('#vhostTypeTab button').forEach(tab => {
+    tab.addEventListener('shown.bs.tab', function (e) {
+        const target = e.target.getAttribute('data-bs-target');
+        document.getElementById('type-static').disabled = true;
+        document.getElementById('type-proxy').disabled = true;
+        document.getElementById('type-redirect').disabled = true;
+        if (target === '#static-pane') {
+            document.getElementById('type-static').disabled = false;
+        } else if (target === '#proxy-pane') {
+            document.getElementById('type-proxy').disabled = false;
+        } else if (target === '#redirect-pane') {
+            document.getElementById('type-redirect').disabled = false;
+        }
+    });
+});
+
+// SSL toggle
+const sslToggle = document.getElementById('sslToggle');
+const sslFields = document.getElementById('sslFields');
+if (sslToggle && sslFields) {
+    sslToggle.addEventListener('change', () => {
+        sslFields.style.display = sslToggle.checked ? 'block' : 'none';
+    });
+}
+</script>
+{% endblock %}
+

@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}{{ vhost.server_name }} - Apache VHost Manager{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mt-4">{{ vhost.server_name }}</h1>
+        <div>
+            <a href="{{ url_for('vhosts.edit_vhost', vhost_id=vhost.id) }}" class="btn btn-outline-secondary">
+                <i class="bi bi-pencil me-1"></i>Edit
+            </a>
+            <a href="{{ url_for('vhosts.download_config', vhost_id=vhost.id) }}" class="btn btn-outline-info">
+                <i class="bi bi-download me-1"></i>Download
+            </a>
+            {% if vhost.vhost_type == 'proxy' %}
+            <button class="btn btn-outline-primary" id="testBackendBtn" data-vhost-id="{{ vhost.id }}" data-csrf-token="{{ csrf_token() }}">
+                <i class="bi bi-lightning me-1"></i>Test Backend
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Details Card -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between">
+                    <span>Virtual Host Details</span>
+                    <div>
+                        {% if vhost.vhost_type == 'static' %}
+                            <span class="badge bg-info">Static Website</span>
+                        {% elif vhost.vhost_type == 'proxy' %}
+                            <span class="badge bg-warning text-dark">Reverse Proxy</span>
+                        {% elif vhost.vhost_type == 'redirect' %}
+                            <span class="badge bg-dark">Redirect Only</span>
+                        {% endif %}
+                        {% if vhost.enabled %}
+                            <span class="badge bg-success">Enabled</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Disabled</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr><td class="fw-bold" style="width: 30%;">ServerName</td><td>{{ vhost.server_name }}</td></tr>
+                        <tr><td class="fw-bold">Listen Port</td><td>{{ vhost.listen_port }}</td></tr>
+                        {% if vhost.server_alias %}
+                        <tr><td class="fw-bold">ServerAlias</td><td>{{ vhost.server_alias }}</td></tr>
+                        {% endif %}
+                        {% if vhost.document_root %}
+                        <tr><td class="fw-bold">DocumentRoot</td><td><code>{{ vhost.document_root }}</code></td></tr>
+                        {% endif %}
+                        {% if vhost.vhost_type == 'proxy' %}
+                        <tr><td class="fw-bold">Backend</td><td><code>{{ vhost.backend_protocol }}://{{ vhost.backend_host }}:{{ vhost.backend_port }}{{ vhost.backend_path }}</code></td></tr>
+                        <tr><td class="fw-bold">Proxy Path</td><td><code>{{ vhost.proxy_path }}</code></td></tr>
+                        <tr><td class="fw-bold">Preserve Host</td><td>{{ 'Yes' if vhost.preserve_host else 'No' }}</td></tr>
+                        <tr><td class="fw-bold">WebSocket Support</td><td>{{ 'Yes' if vhost.websocket_support else 'No' }}</td></tr>
+                        {% endif %}
+                        {% if vhost.vhost_type == 'redirect' %}
+                        <tr><td class="fw-bold">Redirect URL</td><td><code>{{ vhost.redirect_url }}</code></td></tr>
+                        <tr><td class="fw-bold">Permanent</td><td>{{ 'Yes (301)' if vhost.redirect_permanent else 'No (302)' }}</td></tr>
+                        {% endif %}
+                        <tr><td class="fw-bold">SSL Enabled</td><td>{{ 'Yes' if vhost.ssl_enabled else 'No' }}</td></tr>
+                        {% if vhost.ssl_enabled %}
+                        <tr><td class="fw-bold">SSL Certificate</td><td><code>{{ vhost.ssl_cert_file or 'Not set' }}</code></td></tr>
+                        <tr><td class="fw-bold">SSL Key</td><td><code>{{ vhost.ssl_key_file or 'Not set' }}</code></td></tr>
+                        <tr><td class="fw-bold">Force HTTPS</td><td>{{ 'Yes' if vhost.force_https else 'No' }}</td></tr>
+                        {% endif %}
+                        {% if vhost.error_log %}
+                        <tr><td class="fw-bold">ErrorLog</td><td><code>{{ vhost.error_log }}</code></td></tr>
+                        {% endif %}
+                        {% if vhost.custom_log %}
+                        <tr><td class="fw-bold">CustomLog</td><td><code>{{ vhost.custom_log }}</code></td></tr>
+                        {% endif %}
+                        <tr><td class="fw-bold">Created</td><td>{{ vhost.created_at.strftime('%Y-%m-%d %H:%M UTC') }}</td></tr>
+                        <tr><td class="fw-bold">Updated</td><td>{{ vhost.updated_at.strftime('%Y-%m-%d %H:%M UTC') }}</td></tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Generated Config Preview -->
+            <div class="card">
+                <div class="card-header">
+                    <a class="text-decoration-none" data-bs-toggle="collapse" href="#configPreview" role="button">
+                        <i class="bi bi-chevron-down me-1"></i>Advanced / Preview Generated Config
+                    </a>
+                </div>
+                <div class="collapse" id="configPreview">
+                    <div class="card-body">
+                        <pre class="bg-dark text-light p-3 rounded"><code>{{ vhost.config_content }}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Actions Card -->
+            <div class="card mb-4">
+                <div class="card-header">Actions</div>
+                <div class="card-body">
+                    {% if vhost.enabled %}
+                    <form method="POST" action="{{ url_for('vhosts.disable_vhost_route', vhost_id=vhost.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-warning w-100 mb-2">
+                            <i class="bi bi-pause-fill me-1"></i>Disable VHost
+                        </button>
+                    </form>
+                    {% else %}
+                    <form method="POST" action="{{ url_for('vhosts.enable_vhost_route', vhost_id=vhost.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-success w-100 mb-2">
+                            <i class="bi bi-play-fill me-1"></i>Enable VHost
+                        </button>
+                    </form>
+                    {% endif %}
+                    <a href="{{ url_for('vhosts.vhost_backups', vhost_id=vhost.id) }}" class="btn btn-outline-secondary w-100 mb-2">
+                        <i class="bi bi-clock-history me-1"></i>View Backups
+                    </a>
+                    <form method="POST" action="{{ url_for('vhosts.delete_vhost_route', vhost_id=vhost.id) }}"
+                          onsubmit="return confirm('Delete {{ vhost.server_name }}? This cannot be undone.');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-danger w-100">
+                            <i class="bi bi-trash me-1"></i>Delete VHost
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Backend Test Result -->
+            {% if vhost.vhost_type == 'proxy' %}
+            <div class="card" id="backendTestCard" style="display: none;">
+                <div class="card-header">Backend Test Result</div>
+                <div class="card-body" id="backendTestResult"></div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('testBackendBtn')?.addEventListener('click', function() {
+    const btn = this;
+    const vhostId = btn.dataset.vhostId;
+    const resultDiv = document.getElementById('backendTestResult');
+    const card = document.getElementById('backendTestCard');
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Testing...';
+
+    fetch(`/vhosts/${vhostId}/test-backend`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': btn.dataset.csrfToken }
+    })
+        .then(r => r.json())
+        .then(data => {
+            card.style.display = 'block';
+            if (data.success) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>Reachable</strong><br>
+                        URL: ${data.url}<br>
+                        Status: ${data.status_code}<br>
+                        Response time: ${data.response_time_ms ? data.response_time_ms.toFixed(0) + 'ms' : 'N/A'}
+                    </div>`;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>Unreachable</strong><br>
+                        ${data.message}
+                    </div>`;
+            }
+        })
+        .catch(err => {
+            card.style.display = 'block';
+            resultDiv.innerHTML = `<div class="alert alert-danger">Test failed: ${err}</div>`;
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-lightning me-1"></i>Test Backend';
+        });
+});
+</script>
+{% endblock %}
+

@@ -1,0 +1,23 @@
+# Apache VHost Manager - sudoers rules
+# Copy this file to /etc/sudoers.d/apache-vhost-manager
+# and set permissions: chmod 440 /etc/sudoers.d/apache-vhost-manager
+#
+# Replace 'www-data' with the user running the Flask app if different.
+
+# Allow the app user to manage Apache service and modules without password
+www-data ALL=(root) NOPASSWD: /usr/sbin/a2ensite
+www-data ALL=(root) NOPASSWD: /usr/sbin/a2dissite
+www-data ALL=(root) NOPASSWD: /usr/sbin/a2enmod
+www-data ALL=(root) NOPASSWD: /usr/sbin/a2dismod
+www-data ALL=(root) NOPASSWD: /usr/sbin/apache2ctl configtest
+www-data ALL=(root) NOPASSWD: /bin/systemctl start apache2
+www-data ALL=(root) NOPASSWD: /bin/systemctl stop apache2
+www-data ALL=(root) NOPASSWD: /bin/systemctl restart apache2
+www-data ALL=(root) NOPASSWD: /bin/systemctl reload apache2
+www-data ALL=(root) NOPASSWD: /bin/systemctl is-active apache2
+
+# Security note:
+# - Never allow shell escapes or wildcards in these commands.
+# - The app should validate all filenames before passing them to a2ensite/a2dissite.
+# - Consider using a dedicated low-privilege user instead of www-data.
+

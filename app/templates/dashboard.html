@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Apache VHost Manager{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mt-4 mb-4">Dashboard</h1>
+
+    <!-- Apache Status Row -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-hdd-stack me-2"></i>Apache Service Status</span>
+                    <span class="badge bg-{{ 'success' if apache_running else 'danger' }}">
+                        {{ 'Running' if apache_running else 'Stopped' }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Config Test:</strong></p>
+                            <div class="alert alert-{{ 'success' if configtest.valid else 'warning' }} py-2">
+                                <i class="bi bi-{{ 'check-circle' if configtest.valid else 'exclamation-triangle' }}"></i>
+                                {{ configtest.message or 'Unknown' }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>Quick Actions:</strong></p>
+                            <form method="POST" action="{{ url_for('dashboard.index') }}" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-success" formaction="{{ url_for('vhosts.list_vhosts') }}">Reload</button>
+                            </form>
+                            <a href="{{ url_for('vhosts.list_vhosts') }}" class="btn btn-sm btn-outline-primary">Manage VHosts</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card bg-primary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="small">Total VHosts</div>
+                            <div class="fs-3 fw-bold">{{ total }}</div>
+                        </div>
+                        <i class="bi bi-globe fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="small">Enabled</div>
+                            <div class="fs-3 fw-bold">{{ enabled }}</div>
+                        </div>
+                        <i class="bi bi-check-circle fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card bg-secondary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="small">Disabled</div>
+                            <div class="fs-3 fw-bold">{{ disabled }}</div>
+                        </div>
+                        <i class="bi bi-pause-circle fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card bg-info text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="small">Static</div>
+                            <div class="fs-3 fw-bold">{{ static_count }}</div>
+                        </div>
+                        <i class="bi bi-file-earmark-text fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card bg-warning text-dark h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="small">Proxy</div>
+                            <div class="fs-3 fw-bold">{{ proxy_count }}</div>
+                        </div>
+                        <i class="bi bi-arrow-left-right fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-6 mb-3">
+            <div class="card bg-dark text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="small">Redirect</div>
+                            <div class="fs-3 fw-bold">{{ redirect_count }}</div>
+                        </div>
+                        <i class="bi bi-arrow-90deg-right fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Required Modules -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <i class="bi bi-puzzle me-2"></i>Required Apache Modules
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for mod in modules %}
+                        <div class="col-md-4 col-lg-2 mb-3">
+                            <div class="d-flex align-items-center justify-content-between border rounded p-2">
+                                <span class="font-monospace">{{ mod.name }}</span>
+                                {% if mod.enabled %}
+                                    <span class="badge bg-success"><i class="bi bi-check"></i></span>
+                                {% else %}
+                                    <a href="{{ url_for('modules.enable_module_route', module_name=mod.name) }}" class="badge bg-danger text-decoration-none">
+                                        <i class="bi bi-x"></i> Enable
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
