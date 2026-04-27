@@ -6,10 +6,6 @@ A professional Bootstrap-based Flask web application for managing Apache2 virtua
 
 Apache VHost Manager provides a secure, user-friendly interface for administrators to create, edit, enable, disable, and delete Apache virtual hosts. It supports static websites, reverse proxies, and redirect-only configurations with full SSL/TLS support.
 
-## Screenshots
-
-*Screenshots placeholder - add your own screenshots here*
-
 ## Features
 
 - **Authentication**: Secure login/logout with password hashing and CSRF protection
