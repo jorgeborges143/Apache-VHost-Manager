@@ -69,5 +69,5 @@
 - [x] Create run.py
 
 ## Status: COMPLETE
-All required files have been generated. The project is ready for development and deployment.
+All required files have been created. The project is ready for development and deployment.
 
